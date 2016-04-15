@@ -39,7 +39,7 @@ import java.util.Iterator;
 /**
  * Created by adrienp on 4/14/2016.
  */
-public class DisplayActivity extends AppCompatActivity implements GpsStatus.Listener {
+public class DisplayActivity extends Activity implements GpsStatus.Listener {
 
     // debug
     private static final String TAG = "DisplayActivity";
@@ -71,9 +71,7 @@ public class DisplayActivity extends AppCompatActivity implements GpsStatus.List
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.content_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+        setContentView(R.layout.content_display);
 
         // set up the toggle button
         ToggleButton toggle = (ToggleButton) findViewById(R.id.startStopToggle);

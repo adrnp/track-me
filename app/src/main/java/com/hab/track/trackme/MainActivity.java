@@ -46,6 +46,7 @@ import org.mavlink.messages.MAV_STATE;
 import org.mavlink.messages.common.msg_gps_global_origin;
 import org.mavlink.messages.common.msg_gps_raw_int;
 import org.mavlink.messages.common.msg_heartbeat;
+import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -57,6 +58,36 @@ public class MainActivity extends AppCompatActivity {
 
     // debug
     private static final String TAG = "MainActivity";
+
+    // usb stuff
+    UsbManager mUsbManager;
+
+    // UsbSerial stuff
+    /** reference to the actual usb device itself, first thing needed */
+    private UsbDevice mDevice;
+
+    /** given a usb device, create a connection to the device */
+    private UsbDeviceConnection mConnection;
+
+    /** given a connection and a device, can then create a serial port from it to handle serial read and write */
+    private UsbSerialDevice mSerialPort;
+
+    // status stuff
+    private TextView mStatusText;
+
+    // config stuff
+    /** mode of operation selected */
+    public static final int MODE_GROUND = 0;
+    public static final int MODE_AIR = 1;
+    private int mMode = MODE_GROUND;
+
+    /** buadrate */
+    private int mBaudrate = 57600;
+
+    // location stuff
+    private LocationManager mLocationManager;
+    LocationListener mLocationListener;
+
 
 
     @Override
@@ -83,6 +114,33 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Toast.makeText(MainActivity.this, "ideally starting shit now", Toast.LENGTH_LONG).show();
+
+                // setup the serial port...
+                //setupSerialPort();
+
+                switch (mMode) {
+                    case MODE_AIR:
+                        // start sending service
+                        break;
+                    case MODE_GROUND:
+                        // start listening service
+                        break;
+                }
+
+                // start the sending service
+                Intent intent = new Intent(MainActivity.this, MavlinkSendService.class);
+                intent.putExtra("usb_device", mDevice); // send the device to the service
+                //startService(intent);
+
+                // either way probably show the same display activity for now....
+                // or maybe have 2 display activities....
+                intent = new Intent(MainActivity.this, ReceiveDisplayActivity.class);
+                intent.putExtra("usb_device", mDevice); // send the device to the service
+                //startActivity(intent);
+
+                setupSerialPort();
+                configureGPSListener();
+
             }
         });
 
@@ -91,20 +149,52 @@ public class MainActivity extends AppCompatActivity {
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this, R.array.mode_array, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         modeSpinner.setAdapter(adapter);
-        /*
-        modeSpinner.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        modeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                // TODO: track user's selection to show different views later on
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                mStatusText.setText("selected option " + position);
+                mMode = position;
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
             }
         });
-        */
+
+        // get the status textview - so others can update it
+        mStatusText = (TextView) findViewById(R.id.main_status_text);
+
+        // get the usb manager
+        mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
     }
 
 
     @Override
     protected void onResume() {
         super.onResume();
+
+        mStatusText.setText("on resume called... attempting to get device");
+
+        // retrieve the USB device that has been plugged in
+        Intent intent = getIntent();
+        if (intent != null) {
+            mStatusText.setText("intent is not null");
+
+            if (intent.getAction().equals(UsbManager.ACTION_USB_DEVICE_ATTACHED)) {
+
+                mStatusText.setText("usb device was attached!");
+
+                mDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE); // get the actual device!
+                if (mDevice != null) {
+                    Log.d("onResume", "USB device attached: name: " + mDevice.getDeviceName());
+                    mStatusText.setText("USB device attached: name: " + mDevice.getDeviceName());
+                    mConnection = mUsbManager.openDevice(mDevice);
+                }
+            }
+
+        }
+
     }
 
     @Override
@@ -127,6 +217,138 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+
+    /**
+     * setup and configure the serial port.
+     * sends out a heartbeat message once the serial port is configured.
+     */
+    private void setupSerialPort() {
+
+        // should have our device now
+        mSerialPort = UsbSerialDevice.createUsbSerialDevice(mDevice, mConnection);
+        if (mSerialPort != null) {
+            if (mSerialPort.open()) {
+                mSerialPort.setBaudRate(mBaudrate);
+                mSerialPort.setDataBits(UsbSerialInterface.DATA_BITS_8);
+                mSerialPort.setStopBits(UsbSerialInterface.STOP_BITS_1);
+                mSerialPort.setParity(UsbSerialInterface.PARITY_NONE);
+                mSerialPort.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF);
+
+                mStatusText.setText("shit it worked!");
+
+                int sequence = 0;
+                long custom_mode = 3;
+
+                msg_heartbeat hb = new msg_heartbeat(2, 12);
+                hb.sequence = sequence++;
+                hb.autopilot = MAV_AUTOPILOT.MAV_AUTOPILOT_PX4;
+                hb.base_mode = MAV_MODE_FLAG.MAV_MODE_FLAG_STABILIZE_ENABLED;
+                hb.custom_mode = custom_mode;
+                hb.system_status = MAV_STATE.MAV_STATE_POWEROFF;
+                byte[] result = new byte[0];
+                try {
+                    result = hb.encode();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                // write the heartbeat message
+                mSerialPort.write(result);
+
+            } else {
+                // Serial port could not be opened, maybe an I/O error or if CDC driver was chosen, it does not really fit
+                // Send an Intent to Main Activity
+
+                mStatusText.setText("failed to open");
+
+            }
+        } else {
+            // No driver for given device, even generic CDC driver could not be loaded
+            mStatusText.setText("no serial port!");
+        }
+    }
+
+    /**
+     * configure everything for listening to the gps
+     */
+    private void configureGPSListener() {
+
+        /*
+        // Register the listener with the Location Manager to receive location updates
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        } */
+        // check for permission to access location
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        // Acquire a reference to the system Location Manager
+        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+
+        // Define a listener that responds to location updates
+        mLocationListener = new LocationListener() {
+
+            public void onLocationChanged(Location location) {
+
+                mStatusText.setText(location.toString());
+
+                int sequence = 0;
+                long custom_mode = 3;
+
+                msg_heartbeat hb = new msg_heartbeat(2, 12);
+                hb.sequence = sequence++;
+                hb.autopilot = MAV_AUTOPILOT.MAV_AUTOPILOT_PX4;
+                hb.base_mode = MAV_MODE_FLAG.MAV_MODE_FLAG_STABILIZE_ENABLED;
+                hb.custom_mode = custom_mode;
+                hb.system_status = MAV_STATE.MAV_STATE_POWEROFF;
+                byte[] result = new byte[0];
+                try {
+                    result = hb.encode();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                // write the heartbeat message
+                mSerialPort.write(result);
+
+                int lat = (int) (location.getLatitude() * 10000000.);
+                int lon = (int) (location.getLongitude() * 10000000.);
+                int alt = (int) (location.getAltitude() * 1000.);
+
+                msg_gps_raw_int gps = new msg_gps_raw_int();
+                gps.alt = alt;
+                gps.lat = lat;
+                gps.lon = lon;
+                result = new byte[0];
+                try {
+                    result = gps.encode();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                mSerialPort.write(result);
+            }
+
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+            }
+
+            public void onProviderEnabled(String provider) {
+            }
+
+            public void onProviderDisabled(String provider) {
+            }
+        };
+
+        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
     }
 
 

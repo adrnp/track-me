@@ -33,8 +33,16 @@
                 android:resource="@xml/device_filter" />
 
         </activity>
+        <activity
+            android:name=".ReceiveDisplayActivity"
+            android:label="Receive Display" />
+
+        <activity
+            android:name=".DisplayActivity"
+            android:label="Send Display" />
 
         <service android:enabled="true" android:name="com.hab.track.trackme.MavlinkSender" />
+        <service android:enabled="true" android:name="com.hab.track.trackme.MavlinkSendService" />
     </application>
 
 </manifest>
