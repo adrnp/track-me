@@ -18,7 +18,7 @@
         android:layout_marginTop="15dp" />
 
     <Button
-        android:id="@+id/button2"
+        android:id="@+id/start_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Start"
@@ -35,8 +35,8 @@
         android:layout_width="160dp"
         android:layout_height="wrap_content"
         android:layout_below="@+id/textView2"
-        android:layout_alignRight="@+id/button2"
-        android:layout_alignEnd="@+id/button2"
+        android:layout_alignRight="@+id/start_button"
+        android:layout_alignEnd="@+id/start_button"
         android:layout_marginRight="25dp"
         android:layout_marginEnd="25dp"
         android:layout_marginTop="80dp" />
