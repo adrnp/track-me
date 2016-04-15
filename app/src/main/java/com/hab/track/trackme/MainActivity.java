@@ -32,6 +32,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
+import android.widget.ViewFlipper;
 import android.widget.ViewSwitcher;
 
 import com.felhr.usbserial.UsbSerialDevice;
@@ -54,7 +55,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements GpsStatus.Listener {
 
     // debug
     private static final String TAG = "MainActivity";
@@ -74,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
 
     // status stuff
     private TextView mStatusText;
+    private TextView mDetailText;
+    private TextView mExtrasText;
 
     // config stuff
     /** mode of operation selected */
@@ -89,6 +92,9 @@ public class MainActivity extends AppCompatActivity {
     LocationListener mLocationListener;
 
 
+    private ViewFlipper mSwitcher;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,14 +103,16 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        // get the switcher
+        mSwitcher = (ViewFlipper) findViewById(R.id.main_switcher);
+
         // setup the next button
         Button nextButton = (Button) findViewById(R.id.mode_button);
         nextButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Toast.makeText(MainActivity.this, "hey the button clicked!", Toast.LENGTH_SHORT).show();
-                ViewSwitcher switcher = (ViewSwitcher) findViewById(R.id.main_switcher);
-                switcher.showNext(); // show the next view
+                mSwitcher.showNext(); // show the next view
             }
         });
 
@@ -127,6 +135,8 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
 
+                mSwitcher.showNext();
+
                 // start the sending service
                 Intent intent = new Intent(MainActivity.this, MavlinkSendService.class);
                 intent.putExtra("usb_device", mDevice); // send the device to the service
@@ -139,8 +149,23 @@ public class MainActivity extends AppCompatActivity {
                 //startActivity(intent);
 
                 setupSerialPort();
-                configureGPSListener();
+                //configureGPSListener();
 
+            }
+        });
+
+        // stop button
+        Button stopButton = (Button) findViewById(R.id.stop_button);
+        stopButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(MainActivity.this, "stopping...", Toast.LENGTH_LONG).show();
+
+                // stop the mavlink stuff
+
+                //mSwitcher.showPrevious();
+
+                stopGettingGPSPosition();
             }
         });
 
@@ -164,6 +189,8 @@ public class MainActivity extends AppCompatActivity {
 
         // get the status textview - so others can update it
         mStatusText = (TextView) findViewById(R.id.main_status_text);
+        mDetailText = (TextView) findViewById(R.id.main_details_text);
+        mExtrasText = (TextView) findViewById(R.id.main_extra_details_text);
 
         // get the usb manager
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
@@ -236,11 +263,11 @@ public class MainActivity extends AppCompatActivity {
                 mSerialPort.setParity(UsbSerialInterface.PARITY_NONE);
                 mSerialPort.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF);
 
-                mStatusText.setText("shit it worked!");
+                mStatusText.setText("shit it worked! with baudrate of " + mBaudrate);
 
                 int sequence = 0;
                 long custom_mode = 3;
-
+                /*
                 msg_heartbeat hb = new msg_heartbeat(2, 12);
                 hb.sequence = sequence++;
                 hb.autopilot = MAV_AUTOPILOT.MAV_AUTOPILOT_PX4;
@@ -256,7 +283,7 @@ public class MainActivity extends AppCompatActivity {
 
                 // write the heartbeat message
                 mSerialPort.write(result);
-
+                */
             } else {
                 // Serial port could not be opened, maybe an I/O error or if CDC driver was chosen, it does not really fit
                 // Send an Intent to Main Activity
@@ -295,12 +322,14 @@ public class MainActivity extends AppCompatActivity {
         // Acquire a reference to the system Location Manager
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
+        mLocationManager.addGpsStatusListener(this);
+
         // Define a listener that responds to location updates
         mLocationListener = new LocationListener() {
 
             public void onLocationChanged(Location location) {
 
-                mStatusText.setText(location.toString());
+                mDetailText.setText(location.toString());
 
                 int sequence = 0;
                 long custom_mode = 3;
@@ -351,5 +380,39 @@ public class MainActivity extends AppCompatActivity {
         mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
     }
 
+    // turn on the getting and sending of the GPS position
+    private void stopGettingGPSPosition() {
+
+        mStatusText.setText("ended");
+
+        // check for permission to access location
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            mStatusText.setText("do not have permission to access location information");
+            return;
+        }
+
+        mLocationManager.removeUpdates(mLocationListener);
+
+    }
+
+
+    @Override
+    public void onGpsStatusChanged(int event) {
+
+        // get the details of the gps satellites
+        GpsStatus gpsStatus = mLocationManager.getGpsStatus(null);
+        String satDetails = "";
+        if (gpsStatus != null) {
+            Iterable<GpsSatellite> satellites = gpsStatus.getSatellites();
+            Iterator<GpsSatellite> sat = satellites.iterator();
+            int i = 0;
+            while (sat.hasNext()) {
+                GpsSatellite satellite = sat.next();
+                satDetails += (i++) + ": " + satellite.getPrn() + "," + satellite.usedInFix() + "," + satellite.getSnr() + "," + satellite.getAzimuth() + "," + satellite.getElevation() + "\n";
+            }
+
+            mExtrasText.setText(satDetails);
+        }
+    }
 
 }

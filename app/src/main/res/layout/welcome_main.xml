@@ -22,7 +22,7 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="40dp" />
 
-    <ViewSwitcher
+    <ViewFlipper
         android:id="@+id/main_switcher"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -32,8 +32,9 @@
 
         <include layout="@layout/mode_selection" />
         <include layout="@layout/setting_selection" />
+        <include layout="@layout/value_selection" />
 
-    </ViewSwitcher>
+    </ViewFlipper>
 
     <TextView
         android:id="@+id/main_status_text"
