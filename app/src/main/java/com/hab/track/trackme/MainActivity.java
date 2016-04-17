@@ -41,6 +41,8 @@ import com.hoho.android.usbserial.driver.CdcAcmSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 
+import org.mavlink.MAVLinkReader;
+import org.mavlink.messages.MAVLinkMessage;
 import org.mavlink.messages.MAV_AUTOPILOT;
 import org.mavlink.messages.MAV_MODE_FLAG;
 import org.mavlink.messages.MAV_STATE;
@@ -93,6 +95,8 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
 
 
     private ViewFlipper mSwitcher;
+
+    MAVLinkReader mMavReader;
 
 
 
@@ -149,7 +153,7 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
                 //startActivity(intent);
 
                 setupSerialPort();
-                //configureGPSListener();
+                configureGPSListener();
 
             }
         });
@@ -194,6 +198,9 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
 
         // get the usb manager
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
+
+        // create a new reader
+        mMavReader = new MAVLinkReader();
     }
 
 
@@ -267,7 +274,7 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
 
                 int sequence = 0;
                 long custom_mode = 3;
-                /*
+
                 msg_heartbeat hb = new msg_heartbeat(2, 12);
                 hb.sequence = sequence++;
                 hb.autopilot = MAV_AUTOPILOT.MAV_AUTOPILOT_PX4;
@@ -283,7 +290,25 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
 
                 // write the heartbeat message
                 mSerialPort.write(result);
-                */
+
+
+                // write the heartbeat message
+                mSerialPort.read(new UsbSerialInterface.UsbReadCallback() {
+                    @Override
+                    public void onReceivedData(byte[] bytes) {
+                        mDetailText.setText("attempting to read message");
+                        // parse data here
+                        try {
+                            MAVLinkMessage msg = mMavReader.getNextMessage(bytes, bytes.length);
+
+                            mStatusText.setText("received message of type: " + msg.messageType);
+
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                });
             } else {
                 // Serial port could not be opened, maybe an I/O error or if CDC driver was chosen, it does not really fit
                 // Send an Intent to Main Activity
