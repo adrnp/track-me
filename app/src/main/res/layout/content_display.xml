@@ -9,52 +9,106 @@
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context="com.hab.track.trackme.MainActivity"
-    tools:showIn="@layout/activity_main">
-
-    <ToggleButton
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="New ToggleButton"
-        android:id="@+id/startStopToggle"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="96dp" />
+    tools:context="com.hab.track.trackme.DisplayActivity"
+    tools:showIn="@layout/activity_display">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Send Data"
+        android:text="Data Being Sent"
         android:id="@+id/textView"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true" />
 
     <TextView
+        android:id="@+id/gps_display"
+        android:text="gps status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text=""
-        android:id="@+id/gps_display"
         android:layout_centerVertical="true"
         android:layout_centerHorizontal="true" />
 
     <TextView
+        android:id="@+id/gps_details"
+        android:text="satellite details"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceSmall"
-        android:text="GPS Location"
-        android:id="@+id/textView3"
-        android:layout_marginTop="300dp"
+        android:layout_marginTop="39dp"
+        android:layout_below="@+id/gps_display"
+        android:layout_centerHorizontal="true" />
+
+    <Button
+        android:id="@+id/send_stop"
+        android:text="Stop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="38dp"
+        android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true" />
 
     <TextView
+        android:id="@+id/textView3"
+        android:text="Latitude"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textAppearance="?android:attr/textAppearanceSmall"
-        android:text="satellite details"
-        android:id="@+id/gps_details"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_marginTop="98dp"
+        android:layout_below="@+id/textView"
+        android:layout_toLeftOf="@+id/send_stop"
+        android:layout_toStartOf="@+id/send_stop" />
+
+    <TextView
+        android:id="@+id/textView7"
+        android:text="Longitude"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_marginTop="14dp"
         android:layout_below="@+id/textView3"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="65dp" />
+        android:layout_alignLeft="@+id/textView3"
+        android:layout_alignStart="@+id/textView3" />
+
+    <TextView
+        android:id="@+id/textView8"
+        android:text="Altitude"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_marginTop="17dp"
+        android:layout_below="@+id/textView7"
+        android:layout_alignLeft="@+id/textView7"
+        android:layout_alignStart="@+id/textView7" />
+
+    <TextView
+        android:id="@+id/display_lon_value"
+        android:text="lon val"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_above="@+id/textView8"
+        android:layout_alignLeft="@+id/display_lat_value"
+        android:layout_alignStart="@+id/display_lat_value" />
+
+    <TextView
+        android:id="@+id/display_lat_value"
+        android:text="lat val"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_alignTop="@+id/textView3"
+        android:layout_alignRight="@+id/gps_display"
+        android:layout_alignEnd="@+id/gps_display" />
+
+    <TextView
+        android:id="@+id/display_alt_value"
+        android:text="alt val"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:layout_alignTop="@+id/textView8"
+        android:layout_alignLeft="@+id/display_lon_value"
+        android:layout_alignStart="@+id/display_lon_value" />
 </RelativeLayout>
