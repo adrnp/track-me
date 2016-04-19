@@ -121,7 +121,7 @@ public class MavlinkSendService extends Service {
         setupSerialPort();
 
         // this is when we want to start shit up
-        //configureGPSListener();
+        configureGPSListener();
 
 
         return START_STICKY;
