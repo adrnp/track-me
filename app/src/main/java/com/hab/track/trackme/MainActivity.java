@@ -57,7 +57,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-public class MainActivity extends AppCompatActivity implements GpsStatus.Listener {
+public class MainActivity extends AppCompatActivity implements GpsStatus.Listener, View.OnClickListener {
 
     // debug
     private static final String TAG = "MainActivity";
@@ -112,51 +112,11 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
 
         // setup the next button
         Button nextButton = (Button) findViewById(R.id.mode_button);
-        nextButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "hey the button clicked!", Toast.LENGTH_SHORT).show();
-                mSwitcher.showNext(); // show the next view
-            }
-        });
+        nextButton.setOnClickListener(this);
 
         // attempt to setup the start button
         Button startButton = (Button) findViewById(R.id.start_button);
-        startButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "ideally starting shit now", Toast.LENGTH_LONG).show();
-
-                // setup the serial port...
-                //setupSerialPort();
-
-                switch (mMode) {
-                    case MODE_AIR:
-                        // start sending service
-                        break;
-                    case MODE_GROUND:
-                        // start listening service
-                        break;
-                }
-
-                mSwitcher.showNext();
-
-                // start the sending service
-                Intent intent = new Intent(MainActivity.this, MavlinkSendService.class);
-                intent.putExtra("usb_device", mDevice); // send the device to the service
-                //startService(intent);
-
-                // either way probably show the same display activity for now....
-                // or maybe have 2 display activities....
-                intent = new Intent(MainActivity.this, ReceiveDisplayActivity.class);
-                intent.putExtra("usb_device", mDevice); // send the device to the service
-                //startActivity(intent);
-
-                setupSerialPort();
-                configureGPSListener();
-
-            }
-        });
+        startButton.setOnClickListener(this);
 
         // stop button
         Button stopButton = (Button) findViewById(R.id.stop_button);
@@ -293,6 +253,7 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
 
 
                 // write the heartbeat message
+                /*
                 mSerialPort.read(new UsbSerialInterface.UsbReadCallback() {
                     @Override
                     public void onReceivedData(byte[] bytes) {
@@ -309,6 +270,7 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
 
                     }
                 });
+                */
             } else {
                 // Serial port could not be opened, maybe an I/O error or if CDC driver was chosen, it does not really fit
                 // Send an Intent to Main Activity
@@ -440,4 +402,64 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
         }
     }
 
+
+    /**
+     * override of the onClick method for all the buttons that can be clicked.
+     *
+     * Moved everything here just to keep it a bit cleaner.
+     * @param v  view that was clicked
+     */
+    @Override
+    public void onClick(View v) {
+
+        // actual code will depend on what view was clicked
+        switch (v.getId()) {
+            case R.id.mode_button:
+
+                // get the mode of operation
+                Spinner modeSpinner = (Spinner) findViewById(R.id.mode_spinner);
+                mMode = modeSpinner.getSelectedItemPosition();
+
+                // show the next view
+                mSwitcher.showNext(); // show the next view
+
+
+                break;
+            case R.id.start_button:
+
+                // TODO: change what is done based on the mode of operation
+                switch (mMode) {
+                    case MODE_AIR:
+                        // start sending service
+                        break;
+                    case MODE_GROUND:
+                        // start listening service
+                        break;
+                }
+
+                // start the sending service
+                // TODO: move this into MODE_AIR
+                Intent intent = new Intent(MainActivity.this, MavlinkSendService.class);
+                intent.putExtra("usb_device", mDevice); // send the device to the service
+                //startService(intent);
+
+                // either way probably show the same display activity for now....
+                // or maybe have 2 display activities....
+                // TODO: move this into MODE_AIR
+                intent = new Intent(MainActivity.this, ReceiveDisplayActivity.class);
+                intent.putExtra("usb_device", mDevice); // send the device to the service
+                //startActivity(intent);
+
+                // TESTING
+                // have a third view to simply display that has a stop button for testing
+                // also can use the setup serial port and config listener functions to test what
+                // will eventually be in the services
+                //mSwitcher.showNext();
+                //setupSerialPort();
+                //configureGPSListener();
+
+                break;
+        }
+
+    }
 }
