@@ -110,28 +110,10 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
         // get the switcher
         mSwitcher = (ViewFlipper) findViewById(R.id.main_switcher);
 
-        // setup the next button
-        Button nextButton = (Button) findViewById(R.id.mode_button);
-        nextButton.setOnClickListener(this);
-
-        // attempt to setup the start button
-        Button startButton = (Button) findViewById(R.id.start_button);
-        startButton.setOnClickListener(this);
-
-        // stop button
-        Button stopButton = (Button) findViewById(R.id.stop_button);
-        stopButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(MainActivity.this, "stopping...", Toast.LENGTH_LONG).show();
-
-                // stop the mavlink stuff
-
-                //mSwitcher.showPrevious();
-
-                stopGettingGPSPosition();
-            }
-        });
+        // add listeners to all the buttons
+        findViewById(R.id.mode_button).setOnClickListener(this);
+        findViewById(R.id.start_button).setOnClickListener(this);
+        findViewById(R.id.stop_button).setOnClickListener(this);
 
         // setup the mode spinner
         Spinner modeSpinner = (Spinner) findViewById(R.id.mode_spinner);
@@ -151,14 +133,16 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
             }
         });
 
-        // get the status textview - so others can update it
+        // get the status textviews - so others can update it
         mStatusText = (TextView) findViewById(R.id.main_status_text);
         mDetailText = (TextView) findViewById(R.id.main_details_text);
         mExtrasText = (TextView) findViewById(R.id.main_extra_details_text);
 
+        // TESTING
         // get the usb manager
         mUsbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
 
+        // TESTING
         // create a new reader
         mMavReader = new MAVLinkReader();
     }
@@ -168,27 +152,17 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
     protected void onResume() {
         super.onResume();
 
-        mStatusText.setText("on resume called... attempting to get device");
-
         // retrieve the USB device that has been plugged in
         Intent intent = getIntent();
         if (intent != null) {
-            mStatusText.setText("intent is not null");
-
             if (intent.getAction().equals(UsbManager.ACTION_USB_DEVICE_ATTACHED)) {
-
-                mStatusText.setText("usb device was attached!");
-
                 mDevice = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE); // get the actual device!
                 if (mDevice != null) {
                     Log.d("onResume", "USB device attached: name: " + mDevice.getDeviceName());
-                    mStatusText.setText("USB device attached: name: " + mDevice.getDeviceName());
                     mConnection = mUsbManager.openDevice(mDevice);
                 }
             }
-
         }
-
     }
 
     @Override
@@ -367,7 +341,9 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
         mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
     }
 
-    // turn on the getting and sending of the GPS position
+    /**
+     * disable the location listener, which effectively stops sending position updates
+     */
     private void stopGettingGPSPosition() {
 
         mStatusText.setText("ended");
@@ -416,13 +392,8 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
         switch (v.getId()) {
             case R.id.mode_button:
 
-                // get the mode of operation
-                Spinner modeSpinner = (Spinner) findViewById(R.id.mode_spinner);
-                mMode = modeSpinner.getSelectedItemPosition();
-
                 // show the next view
                 mSwitcher.showNext(); // show the next view
-
 
                 break;
             case R.id.start_button:
@@ -441,7 +412,7 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
                 // TODO: move this into MODE_AIR
                 Intent intent = new Intent(MainActivity.this, MavlinkSendService.class);
                 intent.putExtra("usb_device", mDevice); // send the device to the service
-                //startService(intent);
+                startService(intent);
 
                 // either way probably show the same display activity for now....
                 // or maybe have 2 display activities....
@@ -457,6 +428,16 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
                 //mSwitcher.showNext();
                 //setupSerialPort();
                 //configureGPSListener();
+
+                break;
+            case R.id.stop_button:
+                // this is an "emergency stop" button used with the third testing layout
+
+                Toast.makeText(MainActivity.this, "stopping...", Toast.LENGTH_LONG).show();
+
+                // stop the mavlink stuff and go back to previous view
+                mSwitcher.showPrevious();
+                stopGettingGPSPosition();
 
                 break;
         }

@@ -37,12 +37,12 @@ import java.io.IOException;
 public class MavlinkSendService extends Service {
 
     /** binder to give to clients */
-    private final IBinder mBinder = new sendBinder();
+    private final IBinder mBinder = new SendBinder();
 
 
     // location stuff
     private LocationManager mLocationManager;
-    LocationListener mLocationListener;
+    LocationListener mLocationListener = new MyLocationListener();
 
     // usb stuff
     UsbManager mUsbManager;
@@ -68,6 +68,21 @@ public class MavlinkSendService extends Service {
     private double mAlt;
     private float mSignalStrength;
 
+    /**
+     * classed used for the client Binder.
+     */
+    public class SendBinder extends Binder {
+
+        /**
+         * binder function to be able to access the service,
+         * and therefore the public methods in the service.
+         * @return  MavlinkSendService object - to use public methods
+         */
+        MavlinkSendService getService() {
+            return MavlinkSendService.this;
+        }
+    }
+
 
     @Override
     public void onCreate() {
@@ -89,14 +104,12 @@ public class MavlinkSendService extends Service {
     }
 
 
-    // probably need to override the onstartcommand method too
-
-
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
-        // get the device
-        mDevice = intent.getParcelableExtra("usb_device");
+        // get passed information
+        mDevice = intent.getParcelableExtra("usb_device");  // the usb device
+        mBaudrate = intent.getIntExtra("baudrate", 57600);  // the baudrate for the serial connection
 
         // now need to configure and connect to the device
         if (mDevice != null) {
@@ -128,7 +141,10 @@ public class MavlinkSendService extends Service {
         // stop listening to the gps
         mLocationManager.removeUpdates(mLocationListener);
 
-        // TODO: close serial port
+        // close the serial port (if it was opened)
+        if (mSerialPort != null) {
+            mSerialPort.close();
+        }
     }
 
     @Override
@@ -144,14 +160,26 @@ public class MavlinkSendService extends Service {
 
     // functions for bound activity to get
 
+    /**
+     * get the most recent latitude update - for display activity.
+     * @return  double latitude (in degrees)
+     */
     public double getLatitude() {
         return mLat;
     }
 
+    /**
+     * get the most recent longitude update - for display activity.
+     * @return  double longitude (in degrees)
+     */
     public double getLongitude() {
         return mLon;
     }
 
+    /**
+     * get the most recent altitude update - for display activity.
+     * @return  double altitude (in ft?)
+     */
     public double getAltitude() {
         return mAlt;
     }
@@ -162,18 +190,6 @@ public class MavlinkSendService extends Service {
      */
     private void configureGPSListener() {
 
-        /*
-        // Register the listener with the Location Manager to receive location updates
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        } */
         // check for permission to access location
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
@@ -182,62 +198,7 @@ public class MavlinkSendService extends Service {
         // Acquire a reference to the system Location Manager
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
 
-        // Define a listener that responds to location updates
-        mLocationListener = new LocationListener() {
-
-            public void onLocationChanged(Location location) {
-
-                int sequence = 0;
-                long custom_mode = 3;
-
-                msg_heartbeat hb = new msg_heartbeat(2, 12);
-                hb.sequence = sequence++;
-                hb.autopilot = MAV_AUTOPILOT.MAV_AUTOPILOT_PX4;
-                hb.base_mode = MAV_MODE_FLAG.MAV_MODE_FLAG_STABILIZE_ENABLED;
-                hb.custom_mode = custom_mode;
-                hb.system_status = MAV_STATE.MAV_STATE_POWEROFF;
-                byte[] result = new byte[0];
-                try {
-                    result = hb.encode();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-                // write the heartbeat message
-                mSerialPort.write(result);
-
-                mLat = location.getLatitude();
-                mLon = location.getLongitude();
-                mAlt = location.getAltitude();
-                mSignalStrength = 0;
-
-                int lat = (int) (location.getLatitude() * 10000000.);
-                int lon = (int) (location.getLongitude() * 10000000.);
-                int alt = (int) (location.getAltitude() * 1000.);
-
-                msg_gps_raw_int gps = new msg_gps_raw_int();
-                gps.alt = alt;
-                gps.lat = lat;
-                gps.lon = lon;
-                result = new byte[0];
-                try {
-                    result = gps.encode();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                mSerialPort.write(result);
-            }
-
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-            }
-
-            public void onProviderEnabled(String provider) {
-            }
-
-            public void onProviderDisabled(String provider) {
-            }
-        };
-
+        // request updates
         mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
     }
 
@@ -252,61 +213,122 @@ public class MavlinkSendService extends Service {
 
         // should have our device now
         mSerialPort = UsbSerialDevice.createUsbSerialDevice(mDevice, mConnection);
-        if (mSerialPort != null) {
-            if (mSerialPort.open()) {
-                mSerialPort.setBaudRate(mBaudrate);
-                mSerialPort.setDataBits(UsbSerialInterface.DATA_BITS_8);
-                mSerialPort.setStopBits(UsbSerialInterface.STOP_BITS_1);
-                mSerialPort.setParity(UsbSerialInterface.PARITY_NONE);
-                mSerialPort.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF);
 
-                // TODO: log working
+        // if serial port failed to create, just exit
+        if (mSerialPort == null) {
+            // TODO: log error
+            return;
+        }
 
-                int sequence = 0;
-                long custom_mode = 3;
+        // open and configure serial connection and send a heartbeat out
+        if (mSerialPort.open()) {
+            mSerialPort.setBaudRate(mBaudrate);
+            mSerialPort.setDataBits(UsbSerialInterface.DATA_BITS_8);
+            mSerialPort.setStopBits(UsbSerialInterface.STOP_BITS_1);
+            mSerialPort.setParity(UsbSerialInterface.PARITY_NONE);
+            mSerialPort.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF);
 
-                msg_heartbeat hb = new msg_heartbeat(2, 12);
-                hb.sequence = sequence++;
-                hb.autopilot = MAV_AUTOPILOT.MAV_AUTOPILOT_PX4;
-                hb.base_mode = MAV_MODE_FLAG.MAV_MODE_FLAG_STABILIZE_ENABLED;
-                hb.custom_mode = custom_mode;
-                hb.system_status = MAV_STATE.MAV_STATE_POWEROFF;
-                byte[] result = new byte[0];
-                try {
-                    result = hb.encode();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+            // TODO: log working
 
-                // write the heartbeat message
-                mSerialPort.write(result);
+            int sequence = 0;
+            long custom_mode = 3;
 
-            } else {
-                // Serial port could not be opened, maybe an I/O error or if CDC driver was chosen, it does not really fit
-                // Send an Intent to Main Activity
-                // TODO: log error
-
+            msg_heartbeat hb = new msg_heartbeat(2, 12);
+            hb.sequence = sequence++;
+            hb.autopilot = MAV_AUTOPILOT.MAV_AUTOPILOT_PX4;
+            hb.base_mode = MAV_MODE_FLAG.MAV_MODE_FLAG_STABILIZE_ENABLED;
+            hb.custom_mode = custom_mode;
+            hb.system_status = MAV_STATE.MAV_STATE_POWEROFF;
+            byte[] result = new byte[0];
+            try {
+                result = hb.encode();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
+
+            // write the heartbeat message
+            mSerialPort.write(result);
+
         } else {
-            // No driver for given device, even generic CDC driver could not be loaded
+            // Serial port could not be opened, maybe an I/O error or if CDC driver was chosen, it does not really fit
+            // Send an Intent to Main Activity
             // TODO: log error
         }
     }
 
 
-
     /**
-     * classed used for the client Binder.
+     * LocationListener implementation to handle location updates.
+     *
+     * When location is updated, send a mavlink message out with the new location.
+     * Note: this is effectively rate limited by the setting when registering the location
+     * listeners for updates, so there is no rate limiting here.
+     * If you really wanted to, you could probably throw something here, but ideally should
+     * be adjusting it at the registration side for battery performance reasons.
      */
-    public class sendBinder extends Binder {
+    private class MyLocationListener implements LocationListener {
 
-        /**
-         * binder function to be able to access the service,
-         * and therefore the public methods in the service.
-         * @return  MavlinkSendService object - to use public methods
-         */
-        MavlinkSendService getService() {
-            return MavlinkSendService.this;
+        @Override
+        public void onLocationChanged(Location location) {
+            int sequence = 0;
+            long custom_mode = 3;
+
+            // send a heartbeat with each gps message
+            // this is because radio messages are added after every heartbeat
+            // TODO: move heartbeat sending outside of here at a regular interval
+            msg_heartbeat hb = new msg_heartbeat(2, 12);
+            hb.sequence = sequence++;
+            hb.autopilot = MAV_AUTOPILOT.MAV_AUTOPILOT_PX4;
+            hb.base_mode = MAV_MODE_FLAG.MAV_MODE_FLAG_STABILIZE_ENABLED;
+            hb.custom_mode = custom_mode;
+            hb.system_status = MAV_STATE.MAV_STATE_POWEROFF;
+            byte[] result = new byte[0];
+            try {
+                result = hb.encode();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            // write the heartbeat message
+            mSerialPort.write(result);
+
+            // get the GPS data for the gps message and format it accordingly
+            mLat = location.getLatitude();
+            mLon = location.getLongitude();
+            mAlt = location.getAltitude();
+            mSignalStrength = 0;
+
+            int lat = (int) (location.getLatitude() * 10000000.);
+            int lon = (int) (location.getLongitude() * 10000000.);
+            int alt = (int) (location.getAltitude() * 1000.);
+
+            // build and send the gps message
+            msg_gps_raw_int gps = new msg_gps_raw_int();
+            gps.alt = alt;
+            gps.lat = lat;
+            gps.lon = lon;
+            result = new byte[0];
+            try {
+                result = gps.encode();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            mSerialPort.write(result);
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+
         }
     }
 
