@@ -132,7 +132,7 @@ public class MavlinkSendService extends Service {
         }
 
         // configure the serial port
-        //setupSerialPort();
+        setupSerialPort();
 
         // this is when we want to start shit up
         configureGPSListener();
@@ -316,7 +316,7 @@ public class MavlinkSendService extends Service {
             }
 
             // write the heartbeat message
-            //mSerialPort.write(result);
+            mSerialPort.write(result);
 
             // get the GPS data for the gps message and format it accordingly
             mLat = location.getLatitude();
@@ -339,7 +339,7 @@ public class MavlinkSendService extends Service {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            //mSerialPort.write(result);
+            mSerialPort.write(result);
 
             // broadcast the result so that the activity can display the current gps info
             Intent intent = new Intent(GPS_UPDATE_NOTIFICATION);

@@ -73,8 +73,8 @@ public class DisplayActivity extends Activity {
 
                 // set these values to the textview
                 mLatText.setText(String.format(Locale.US, "%.6f", lat));
-                mLonText.setText(String.format(Locale.US, "%.6f", lat));
-                mAltText.setText(String.format(Locale.US, "%.2f", lat));
+                mLonText.setText(String.format(Locale.US, "%.6f", lon));
+                mAltText.setText(String.format(Locale.US, "%.2f", alt));
             }
         }
     };
@@ -100,6 +100,9 @@ public class DisplayActivity extends Activity {
                 // stop the service
                 Intent intent = new Intent(DisplayActivity.this, MavlinkSendService.class);
                 stopService(intent);
+
+                // go back to the main activity
+                finish();
             }
         });
     }
