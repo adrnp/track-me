@@ -76,21 +76,6 @@ public class ReceiveDisplayActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_display);
 
-        // set up the toggle button
-        ToggleButton toggle = (ToggleButton) findViewById(R.id.startStopToggle);
-        toggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    // The toggle is enabled
-
-                    readData();
-
-                } else {
-                    // The toggle is disabled
-
-                }
-            }
-        });
 
         // get the textviews
         mDisplayText = (TextView) findViewById(R.id.gps_display);

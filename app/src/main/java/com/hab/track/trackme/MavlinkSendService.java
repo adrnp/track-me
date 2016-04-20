@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -35,6 +36,13 @@ import java.io.IOException;
  * Created by adrienp on 4/15/2016.
  */
 public class MavlinkSendService extends Service {
+
+    /** constants for others to use to access broadcast info */
+    public static final String LATITUDE = "latitude";
+    public static final String LONGITUDE = "longitude";
+    public static final String ALTITUDE = "altitude";
+    // TODO: add strings for the signal strength measurements that can come in
+    public static final String GPS_UPDATE_NOTIFICATION = "com.hab.track.trackme.gps_update_notification";
 
     /** binder to give to clients */
     private final IBinder mBinder = new SendBinder();
@@ -118,7 +126,7 @@ public class MavlinkSendService extends Service {
         }
 
         // configure the serial port
-        setupSerialPort();
+        //setupSerialPort();
 
         // this is when we want to start shit up
         configureGPSListener();
@@ -290,7 +298,7 @@ public class MavlinkSendService extends Service {
             }
 
             // write the heartbeat message
-            mSerialPort.write(result);
+            //mSerialPort.write(result);
 
             // get the GPS data for the gps message and format it accordingly
             mLat = location.getLatitude();
@@ -313,7 +321,14 @@ public class MavlinkSendService extends Service {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            mSerialPort.write(result);
+            //mSerialPort.write(result);
+
+            // broadcast the result so that the activity can display the current gps info
+            Intent intent = new Intent(GPS_UPDATE_NOTIFICATION);
+            intent.putExtra(LATITUDE, mLat);
+            intent.putExtra(LONGITUDE, mLon);
+            intent.putExtra(ALTITUDE, mAlt);
+            LocalBroadcastManager.getInstance(MavlinkSendService.this).sendBroadcast(intent);
         }
 
         @Override

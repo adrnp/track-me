@@ -417,9 +417,9 @@ public class MainActivity extends AppCompatActivity implements GpsStatus.Listene
                 // either way probably show the same display activity for now....
                 // or maybe have 2 display activities....
                 // TODO: move this into MODE_AIR
-                intent = new Intent(MainActivity.this, ReceiveDisplayActivity.class);
+                intent = new Intent(MainActivity.this, DisplayActivity.class);
                 intent.putExtra("usb_device", mDevice); // send the device to the service
-                //startActivity(intent);
+                startActivity(intent);
 
                 // TESTING
                 // have a third view to simply display that has a stop button for testing
