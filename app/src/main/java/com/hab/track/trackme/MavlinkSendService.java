@@ -1,6 +1,8 @@
 package com.hab.track.trackme;
 
 import android.Manifest;
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -18,6 +20,7 @@ import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.LocalBroadcastManager;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -43,6 +46,9 @@ public class MavlinkSendService extends Service {
     public static final String ALTITUDE = "altitude";
     // TODO: add strings for the signal strength measurements that can come in
     public static final String GPS_UPDATE_NOTIFICATION = "com.hab.track.trackme.gps_update_notification";
+
+    /** foreground service id */
+    private static final int FOREGROUND_NOTIFICATION_ID = 112358;
 
     /** binder to give to clients */
     private final IBinder mBinder = new SendBinder();
@@ -130,6 +136,18 @@ public class MavlinkSendService extends Service {
 
         // this is when we want to start shit up
         configureGPSListener();
+
+        // get this running in the foreground
+        // (for importance, this means android won't kill this service)
+        Notification notification = new NotificationCompat.Builder(this)
+                .setContentTitle("Track Me")
+                .setTicker("Track Me")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setOngoing(true).build();
+
+        startForeground(FOREGROUND_NOTIFICATION_ID, notification);
+
+        // TODO: add ability to stop service from notification or return to the main activity
 
 
         return START_STICKY;
