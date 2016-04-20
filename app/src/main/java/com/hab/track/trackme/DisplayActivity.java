@@ -44,6 +44,7 @@ import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Locale;
 
 /**
  * Created by adrienp on 4/14/2016.
@@ -71,9 +72,9 @@ public class DisplayActivity extends Activity {
                 double alt = bundle.getDouble(MavlinkSendService.ALTITUDE);
 
                 // set these values to the textview
-                mLatText.setText(Double.toString(lat));
-                mLonText.setText(Double.toString(lon));
-                mAltText.setText(Double.toString(alt));
+                mLatText.setText(String.format(Locale.US, "%.6f", lat));
+                mLonText.setText(String.format(Locale.US, "%.6f", lat));
+                mAltText.setText(String.format(Locale.US, "%.2f", lat));
             }
         }
     };
